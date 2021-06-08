@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>sample</title>
+</head>
+
+<style>
+  * {
+    margin: 0px;
+    padding: 0px;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    height: 100%;
+    margin: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    display: table;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .titlebar {
+    z-index: 3;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    width: 30%;
+    margin: auto;
+    opacity: 0.5;
+  }
+
+  .titlebar:hover {
+    width: 100%;
+    background: yellow;
+  }
+
+  .titlebar:focus-within {
+    width: 100%;
+    background: red;
+  }
+
+  .control {
+    position: absolute;
+    left: 0;
+  }
+
+  .title {
+    margin: 0;
+  }
+
+  .date {
+    position: absolute;
+    right: 0;
+  }
+
+  .container {
+    z-index: 1;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+  }
+
+  .contents {
+    padding: 20px;
+  }
+</style>
+
+<body>
+
+  <div class="wrapper">
+    <div class="titlebar" tabindex="0">
+      <p class="title">title</p>
+    </div>
+    <div class="container">
+      <div class="contents">
+        contents here<br/>
+        after clicking 'title' bar,<br/>
+        ctrl+b " to split pane vertically<br/>
+        crtl+b % to split pane horizontally<br/>
+        ctrl+b d to close pane
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
