@@ -23,6 +23,14 @@ class Container {
     this.childs.push(child);
   }
 
+  getPosition(child) {
+    return this.childs.indexOf(child);
+  }
+
+  insertChild(child, position) {
+    this.childs.splice(position, 0, child);
+  }
+
   removeChild(child) {
     let index = this.childs.indexOf(child);
     if (this.childs.length > 1) {
@@ -86,32 +94,48 @@ class Container {
     let newMyHeight = parseInt(this.height / 2);
     let newOtherHeight = this.height - newMyHeight;
 
-    let newParent = new Container(this.parent, this.width, this.height, SplitDirection.horizontal);
-    let newChild = new Pane(newParent, this.width, newOtherHeight);
-    this.height = newMyHeight;
-    if (this.parent !== null)
-      this.parent.replaceChild(this, newParent);
-    this.changeParent(newParent);
+    if (this.parent !== null && this.parent.splitDirection == SplitDirection.horizontal) {
+      let newChild = new Pane(this.parent, this.width, newOtherHeight);
+      let position = this.parent.getPosition(this);
+      this.parent.insertChild(newChild, position + 1);
+      this.height = newMyHeight;
+      this.parent.reload();
+    } else {
+      let newParent = new Container(this.parent, this.width, this.height, SplitDirection.horizontal);
+      let newChild = new Pane(newParent, this.width, newOtherHeight);
+      this.height = newMyHeight;
+      if (this.parent !== null)
+        this.parent.replaceChild(this, newParent);
+      this.changeParent(newParent);
 
-    newParent.appendChild(this);
-    newParent.appendChild(newChild);
-    newParent.reload();
+      newParent.appendChild(this);
+      newParent.appendChild(newChild);
+      newParent.reload();
+    }
   }
 
   splitVertically() {
     let newMyWidth = parseInt(this.width / 2);
-    let newOtherWidth = this.height - newMyWidth;
+    let newOtherWidth = this.width - newMyWidth;
 
-    let newParent = new Container(this.parent, this.width, this.height, SplitDirection.vertical);
-    let newChild = new Pane(newParent, newMyWidth, this.height);
-    this.width = newOtherWidth;
-    if (this.parent !== null)
-      this.parent.replaceChild(this, newParent);
-    this.changeParent(newParent);
+    if (this.parent !== null && this.parent.splitDirection == SplitDirection.vertical) {
+      let newChild = new Pane(this.parent, newOtherWidth, this.height);
+      let position = this.parent.getPosition(this);
+      this.parent.insertChild(newChild, position + 1);
+      this.width = newMyWidth;
+      this.parent.reload();
+    } else {
+      let newParent = new Container(this.parent, this.width, this.height, SplitDirection.vertical);
+      let newChild = new Pane(newParent, newOtherWidth, this.height);
+      this.width = newMyWidth;
+      if (this.parent !== null)
+        this.parent.replaceChild(this, newParent);
+      this.changeParent(newParent);
 
-    newParent.appendChild(this);
-    newParent.appendChild(newChild);
-    newParent.reload();
+      newParent.appendChild(this);
+      newParent.appendChild(newChild);
+      newParent.reload();
+    }
   }
 
   resizeChildHorizontally(child, size) {
@@ -126,7 +150,7 @@ class Container {
     const index = this.childs.indexOf(child);
     if (index === this.childs.length - 1) {
       // most right pane has different direction
-      if (this.childs[index - 1].width + size > 0 && 
+      if (this.childs[index - 1].width + size > 0 &&
           this.childs[index].width - size > 0) {
         this.childs[index - 1].width += size;
         this.childs[index].width -= size;
@@ -154,7 +178,7 @@ class Container {
     const index = this.childs.indexOf(child);
     if (index === this.childs.length - 1) {
       // most right pane has different direction
-      if (this.childs[index - 1].height + size > 0 && 
+      if (this.childs[index - 1].height + size > 0 &&
           this.childs[index].height - size > 0) {
         this.childs[index - 1].height += size;
         this.childs[index].height -= size;
