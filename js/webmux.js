@@ -24,10 +24,36 @@ class Container {
   }
 
   removeChild(child) {
-    this.childs = this.childs.filter(item => item !== child);
-    if (this.childs.length === 0) {
-      if (this.parent !== null) this.parent.removeChild(this);
+    let index = this.childs.indexOf(child);
+    if (this.childs.length > 1) {
+      if (this.splitDirection == SplitDirection.horizontal) {
+        if (index == this.childs.length - 1) {
+          this.childs[index - 1].height += child.height;
+        } else {
+          this.childs[index + 1].height += child.height;
+        }
+      } else if (this.splitDirection == SplitDirection.vertical) {
+        if (index == this.childs.length - 1) {
+          this.childs[index - 1].width += child.width;
+        } else {
+          this.childs[index + 1].width += child.width;
+        }
+      }
     }
+
+    this.childs.splice(index, 1);
+    if (this.parent !== null) {
+      if (this.childs.length === 0) {
+        this.parent.removeChild(this);
+        // TODO: delete this ?
+      } else if (this.childs.length === 1) {
+        // container must have two or more childs
+        this.parent.replaceChild(this, this.childs[0]);
+        this.childs[0].changeParent(this.parent);
+        // TODO: delete this ?
+      }
+    }
+    rootContainer.reload();
   }
 
   replaceChild(oldChild, newChild) {
@@ -44,7 +70,6 @@ class Container {
   }
 
   getChildPosition(child) {
-    console.info(child);
     let position = this.getPosition();
     for (var i = 0; i < this.childs.length; i++) {
       if (this.childs[i] === child) return position;
@@ -58,8 +83,12 @@ class Container {
   }
 
   splitHorizontally() {
+    let newMyHeight = parseInt(this.height / 2);
+    let newOtherHeight = this.height - newMyHeight;
+
     let newParent = new Container(this.parent, this.width, this.height, SplitDirection.horizontal);
-    let newChild = new Pane(newParent, this.width, this.height);
+    let newChild = new Pane(newParent, this.width, newOtherHeight);
+    this.height = newMyHeight;
     if (this.parent !== null)
       this.parent.replaceChild(this, newParent);
     this.changeParent(newParent);
@@ -67,12 +96,15 @@ class Container {
     newParent.appendChild(this);
     newParent.appendChild(newChild);
     newParent.reload();
-    console.info(rootContainer);
   }
 
   splitVertically() {
+    let newMyWidth = parseInt(this.width / 2);
+    let newOtherWidth = this.height - newMyWidth;
+
     let newParent = new Container(this.parent, this.width, this.height, SplitDirection.vertical);
-    let newChild = new Pane(newParent, this.width, this.height);
+    let newChild = new Pane(newParent, newMyWidth, this.height);
+    this.width = newOtherWidth;
     if (this.parent !== null)
       this.parent.replaceChild(this, newParent);
     this.changeParent(newParent);
@@ -80,36 +112,66 @@ class Container {
     newParent.appendChild(this);
     newParent.appendChild(newChild);
     newParent.reload();
-    console.info(rootContainer);
+  }
+
+  resizeChildHorizontally(child, size) {
+    if (this.splitDirection !== SplitDirection.vertical) {
+      if (this.parent !== null) this.parent.resizeChildHorizontally(this, size);
+      return;
+    }
+    if (this.childs.length < 2) {
+      console.error('invalid child size: ' + this.childs.length);
+    }
+
+    const index = this.childs.indexOf(child);
+    if (index === this.childs.length - 1) {
+      // most right pane has different direction
+      if (this.childs[index - 1].width + size > 0 && 
+          this.childs[index].width - size > 0) {
+        this.childs[index - 1].width += size;
+        this.childs[index].width -= size;
+      }
+    } else {
+      if (this.childs[index].width + size > 0 &&
+          this.childs[index + 1].width - size > 0) {
+        this.childs[index].width += size;
+        this.childs[index + 1].width -= size;
+      }
+    }
+
+    this.reload();
+  }
+
+  resizeChildVertically(child, size) {
+    if (this.splitDirection !== SplitDirection.horizontal) {
+      if (this.parent !== null) this.parent.resizeChildVertically(this, size);
+      return;
+    }
+    if (this.childs.length < 2) {
+      console.error('invalid child size: ' + this.childs.length);
+    }
+
+    const index = this.childs.indexOf(child);
+    if (index === this.childs.length - 1) {
+      // most right pane has different direction
+      if (this.childs[index - 1].height + size > 0 && 
+          this.childs[index].height - size > 0) {
+        this.childs[index - 1].height += size;
+        this.childs[index].height -= size;
+      }
+    } else {
+      if (this.childs[index].height + size > 0 &&
+          this.childs[index + 1].height - size > 0) {
+        this.childs[index].height += size;
+        this.childs[index + 1].height -= size;
+      }
+    }
+
+    this.reload();
   }
 
   reload() {
-    if (this.splitDirection == SplitDirection.vertical) {
-      console.info(this.childs.length);
-      const width = parseInt(this.width / this.childs.length);
-      let totalWidth = 0;
-      for (var i = 0; i < this.childs.length - 1; i++) {
-        this.childs[i].width = width;
-        this.childs[i].height = this.height;
-        totalWidth += width;
-      }
-      this.childs.slice(-1)[0].width = this.width - totalWidth;
-      this.childs.slice(-1)[0].height = this.height;
-    } else if (this.splitDirection == SplitDirection.horizontal) {
-      console.info(this.childs.length);
-      const height = parseInt(this.height / this.childs.length);
-      let totalHeight = 0;
-      for (var i = 0; i < this.childs.length - 1; i++) {
-        this.childs[i].width = this.width;
-        this.childs[i].height = height;
-        totalHeight += height;
-      }
-      this.childs.slice(-1)[0].width = this.width;
-      this.childs.slice(-1)[0].height = this.height - totalHeight;
-    }
-
     for (var i = 0; i < this.childs.length; i++) {
-      console.info(this.childs[i].height);
       this.childs[i].reload();
     }
   }
@@ -143,19 +205,16 @@ class Pane extends Container {
 
   reload() {
     const position = this.getPosition();
-    console.info(position);
     this.div.style.gridColumn = position[0] + '/' + (position[0] + this.width);
     this.div.style.gridRow = position[1] + '/' + (position[1] + this.height);
   }
 
   onLoad() {
-    console.info('onload');
     return this.iframe.contentWindow.document.addEventListener('keydown', this.onkeydown);
   }
 
   onKeyDown(event) {
     if (event.key === 'b' && event.ctrlKey) {
-      console.info('triggered in iframe');
       this.command_triggered = true;
       return;
     }
@@ -172,6 +231,22 @@ class Pane extends Container {
         console.info('remove');
         this.remove();
         rootContainer.reload();
+        this.command_triggered = false;
+      } else if (event.key === 'ArrowLeft') {
+        console.info('left');
+        this.parent.resizeChildHorizontally(this, -1);
+        this.command_triggered = false;
+      } else if (event.key === 'ArrowRight') {
+        console.info('right');
+        this.parent.resizeChildHorizontally(this, 1);
+        this.command_triggered = false;
+      } else if (event.key === 'ArrowUp') {
+        console.info('up');
+        this.parent.resizeChildVertically(this, -1);
+        this.command_triggered = false;
+      } else if (event.key === 'ArrowDown') {
+        console.info('down');
+        this.parent.resizeChildVertically(this, 1);
         this.command_triggered = false;
       }
     }
