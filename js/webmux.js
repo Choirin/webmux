@@ -12,7 +12,7 @@ class Container {
     this.width = width;
     this.height = height;
     this.splitDirection = splitDirection;
-    this.childs = [];
+    this.children = [];
   }
 
   changeParent(parent) {
@@ -20,44 +20,44 @@ class Container {
   }
 
   appendChild(child) {
-    this.childs.push(child);
+    this.children.push(child);
   }
 
-  getPosition(child) {
-    return this.childs.indexOf(child);
+  indexOf(child) {
+    return this.children.indexOf(child);
   }
 
   insertChild(child, position) {
-    this.childs.splice(position, 0, child);
+    this.children.splice(position, 0, child);
   }
 
   removeChild(child) {
-    let index = this.childs.indexOf(child);
-    if (this.childs.length > 1) {
+    let index = this.children.indexOf(child);
+    if (this.children.length > 1) {
       if (this.splitDirection == SplitDirection.horizontal) {
-        if (index == this.childs.length - 1) {
-          this.childs[index - 1].height += child.height;
+        if (index == this.children.length - 1) {
+          this.children[index - 1].height += child.height;
         } else {
-          this.childs[index + 1].height += child.height;
+          this.children[index + 1].height += child.height;
         }
       } else if (this.splitDirection == SplitDirection.vertical) {
-        if (index == this.childs.length - 1) {
-          this.childs[index - 1].width += child.width;
+        if (index == this.children.length - 1) {
+          this.children[index - 1].width += child.width;
         } else {
-          this.childs[index + 1].width += child.width;
+          this.children[index + 1].width += child.width;
         }
       }
     }
 
-    this.childs.splice(index, 1);
+    this.children.splice(index, 1);
     if (this.parent !== null) {
-      if (this.childs.length === 0) {
+      if (this.children.length === 0) {
         this.parent.removeChild(this);
         // TODO: delete this ?
-      } else if (this.childs.length === 1) {
-        // container must have two or more childs
-        this.parent.replaceChild(this, this.childs[0]);
-        this.childs[0].changeParent(this.parent);
+      } else if (this.children.length === 1) {
+        // container must have two or more children
+        this.parent.replaceChild(this, this.children[0]);
+        this.children[0].changeParent(this.parent);
         // TODO: delete this ?
       }
     }
@@ -65,8 +65,8 @@ class Container {
   }
 
   replaceChild(oldChild, newChild) {
-    const index = this.childs.indexOf(oldChild);
-    this.childs.splice(index, 1, newChild);
+    const index = this.children.indexOf(oldChild);
+    this.children.splice(index, 1, newChild);
   }
 
   getPosition() {
@@ -79,12 +79,12 @@ class Container {
 
   getChildPosition(child) {
     let position = this.getPosition();
-    for (var i = 0; i < this.childs.length; i++) {
-      if (this.childs[i] === child) return position;
+    for (var i = 0; i < this.children.length; i++) {
+      if (this.children[i] === child) return position;
       if (this.splitDirection == SplitDirection.vertical) {
-        position[0] += this.childs[i].width;
+        position[0] += this.children[i].width;
       } else if (this.splitDirection == SplitDirection.horizontal) {
-        position[1] += this.childs[i].height;
+        position[1] += this.children[i].height;
       }
     }
     console.error('cannot find position');
@@ -96,7 +96,8 @@ class Container {
 
     if (this.parent !== null && this.parent.splitDirection == SplitDirection.horizontal) {
       let newChild = new Pane(this.parent, this.width, newOtherHeight);
-      let position = this.parent.getPosition(this);
+      let position = this.parent.indexOf(this);
+      console.info('position is ' + position);
       this.parent.insertChild(newChild, position + 1);
       this.height = newMyHeight;
       this.parent.reload();
@@ -120,7 +121,8 @@ class Container {
 
     if (this.parent !== null && this.parent.splitDirection == SplitDirection.vertical) {
       let newChild = new Pane(this.parent, newOtherWidth, this.height);
-      let position = this.parent.getPosition(this);
+      let position = this.parent.indexOf(this);
+      console.info('position is ' + position);
       this.parent.insertChild(newChild, position + 1);
       this.width = newMyWidth;
       this.parent.reload();
@@ -143,27 +145,27 @@ class Container {
       if (this.parent !== null) this.parent.resizeChildHorizontally(this, size);
       return;
     }
-    if (this.childs.length < 2) {
-      console.error('invalid child size: ' + this.childs.length);
+    if (this.children.length < 2) {
+      console.error('invalid child size: ' + this.children.length);
     }
 
-    const index = this.childs.indexOf(child);
-    if (index === this.childs.length - 1) {
+    const index = this.children.indexOf(child);
+    if (index === this.children.length - 1) {
       // most right pane has different direction
-      if (this.childs[index - 1].width + size > 0 &&
-          this.childs[index].width - size > 0) {
-        this.childs[index - 1].width += size;
-        this.childs[index].width -= size;
+      if (this.children[index - 1].width + size > 0 &&
+          this.children[index].width - size > 0) {
+        this.children[index - 1].width += size;
+        this.children[index].width -= size;
       }
     } else {
-      if (this.childs[index].width + size > 0 &&
-          this.childs[index + 1].width - size > 0) {
-        this.childs[index].width += size;
-        this.childs[index + 1].width -= size;
+      if (this.children[index].width + size > 0 &&
+          this.children[index + 1].width - size > 0) {
+        this.children[index].width += size;
+        this.children[index + 1].width -= size;
       }
     }
 
-    this.reload();
+    rootContainer.reload();
   }
 
   resizeChildVertically(child, size) {
@@ -171,32 +173,69 @@ class Container {
       if (this.parent !== null) this.parent.resizeChildVertically(this, size);
       return;
     }
-    if (this.childs.length < 2) {
-      console.error('invalid child size: ' + this.childs.length);
+    if (this.children.length < 2) {
+      console.error('invalid child size: ' + this.children.length);
     }
 
-    const index = this.childs.indexOf(child);
-    if (index === this.childs.length - 1) {
+    const index = this.children.indexOf(child);
+    if (index === this.children.length - 1) {
       // most right pane has different direction
-      if (this.childs[index - 1].height + size > 0 &&
-          this.childs[index].height - size > 0) {
-        this.childs[index - 1].height += size;
-        this.childs[index].height -= size;
+      if (this.children[index - 1].height + size > 0 &&
+          this.children[index].height - size > 0) {
+        this.children[index - 1].height += size;
+        this.children[index].height -= size;
       }
     } else {
-      if (this.childs[index].height + size > 0 &&
-          this.childs[index + 1].height - size > 0) {
-        this.childs[index].height += size;
-        this.childs[index + 1].height -= size;
+      if (this.children[index].height + size > 0 &&
+          this.children[index + 1].height - size > 0) {
+        this.children[index].height += size;
+        this.children[index + 1].height -= size;
       }
     }
 
-    this.reload();
+    rootContainer.reload();
   }
 
   reload() {
-    for (var i = 0; i < this.childs.length; i++) {
-      this.childs[i].reload();
+    // propagate its size to the children
+    if (this.splitDirection === SplitDirection.horizontal) {
+      let totalHeight = 0;
+      for (var i = 0; i < this.children.length; i++)
+        totalHeight += this.children[i].height;
+      if (this.height !== totalHeight) {
+        let resizeRatio = this.height / totalHeight;
+        totalHeight = 0;
+        for (var i = 0; i < this.children.length - 1; i++) {
+          this.children[i].height = parseInt(this.children[i].height * resizeRatio);
+          totalHeight += this.children[i].height;
+        }
+        this.children[this.children.length - 1] = this.height - totalHeight;
+      }
+      for (var i = 0; i < this.children.length; i++) {
+        this.children[i].width = this.width;
+        this.children[i].reload();
+      }
+    } else if (this.splitDirection === SplitDirection.vertical) {
+      let totalWidth = 0;
+      for (var i = 0; i < this.children.length; i++)
+        totalWidth += this.children[i].width;
+      if (this.width !== totalWidth) {
+        let resizeRatio = this.width / totalWidth;
+        totalWidth = 0;
+        for (var i = 0; i < this.children.length - 1; i++) {
+          this.children[i].width = parseInt(this.children[i].width * resizeRatio);
+          totalWidth += this.children[i].width;
+        }
+        this.children[this.children.length - 1] = this.width - totalWidth;
+      }
+      for (var i = 0; i < this.children.length; i++) {
+        this.children[i].height = this.height;
+        this.children[i].reload();
+      }
+    }
+
+    for (var i = 0; i < this.children.length; i++) {
+      this.children[i].reload();
     }
   }
 }
@@ -285,6 +324,7 @@ window.onload = function () {
   wrapper.style.gridTemplateRows = 'repeat(' + rowCount + ', ' + 100.0 / rowCount + '%)';
   wrapper.style.gridTemplateColumns = 'repeat(' + colCount + ', ' + 100.0 / colCount + '%)';
 
+  // rootContainer = new Pane(null, colCount, rowCount);
   rootContainer = new Container(null, colCount, rowCount, null);
   let initialPane = new Pane(rootContainer, colCount, rowCount);
   rootContainer.appendChild(initialPane);
