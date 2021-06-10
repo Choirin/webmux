@@ -33,11 +33,11 @@ class Container {
   removeChild(child) {
     let index = this.children.indexOf(child);
     if (this.children.length > 1 && this.splitDirection !== null) {
-      const whIndex = this.splitDirection === SplitDirection.vertical? 0: 1;
+      const variableAxis = this.splitDirection === SplitDirection.vertical? 0: 1;
       if (index == this.children.length - 1) {
-        this.children[index - 1].size[whIndex] += child.size[whIndex];
+        this.children[index - 1].size[variableAxis] += child.size[variableAxis];
       } else {
-        this.children[index + 1].size[whIndex] += child.size[whIndex];
+        this.children[index + 1].size[variableAxis] += child.size[variableAxis];
       }
     }
 
@@ -73,18 +73,18 @@ class Container {
     let position = this.getPosition();
     for (var i = 0; i < this.children.length; i++) {
       if (this.children[i] === child || this.splitDirection === null) return position;
-      const whIndex = this.splitDirection === SplitDirection.vertical? 0: 1;
-      position[whIndex] += this.children[i].size[whIndex];
+      const variableAxid = this.splitDirection === SplitDirection.vertical? 0: 1;
+      position[variableAxid] += this.children[i].size[variableAxid];
     }
     console.error('cannot find position');
   }
 
   split(splitDirection) {
-    const whIndex = splitDirection === SplitDirection.vertical? 0: 1;
+    const variableAxis = splitDirection === SplitDirection.vertical? 0: 1;
     let newMySize = this.size.slice();
-    newMySize[whIndex] = parseInt(newMySize[whIndex] / 2);
+    newMySize[variableAxis] = parseInt(newMySize[variableAxis] / 2);
     let newOtherSize = this.size.slice();
-    newOtherSize[whIndex] = this.size[whIndex] - newMySize[whIndex];
+    newOtherSize[variableAxis] = this.size[variableAxis] - newMySize[variableAxis];
 
     if (this.parent !== null && this.parent.splitDirection == splitDirection) {
       let newChild = new Pane(this.parent, newOtherSize);
@@ -107,7 +107,7 @@ class Container {
   }
 
   resizeChild(child, size, direction) {
-    const whIndex = direction === SplitDirection.horizontal? 0: 1;
+    const variableAxis = direction === SplitDirection.horizontal? 0: 1;
     // ここの条件わかりにくいので直す（そもそもresizeでsplitDirectionってのがよくわからん）
     if (this.splitDirection === null || this.splitDirection === direction) {
       if (this.parent !== null) this.parent.resizeChild(this, size, direction);
@@ -120,16 +120,16 @@ class Container {
     const index = this.children.indexOf(child);
     if (index === this.children.length - 1) {
       // most bottom/right pane has different direction
-      if (this.children[index - 1].size[whIndex] + size > 0 &&
-          this.children[index].size[whIndex] - size > 0) {
-        this.children[index - 1].size[whIndex] += size;
-        this.children[index].size[whIndex] -= size;
+      if (this.children[index - 1].size[variableAxis] + size > 0 &&
+          this.children[index].size[variableAxis] - size > 0) {
+        this.children[index - 1].size[variableAxis] += size;
+        this.children[index].size[variableAxis] -= size;
       }
     } else {
-      if (this.children[index].size[whIndex] + size > 0 &&
-          this.children[index + 1].size[whIndex] - size > 0) {
-        this.children[index].size[whIndex] += size;
-        this.children[index + 1].size[whIndex] -= size;
+      if (this.children[index].size[variableAxis] + size > 0 &&
+          this.children[index + 1].size[variableAxis] - size > 0) {
+        this.children[index].size[variableAxis] += size;
+        this.children[index + 1].size[variableAxis] -= size;
       }
     }
 
@@ -142,19 +142,19 @@ class Container {
     }
 
     const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
-    const movableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
     // propagate its size to the children
-    let totalHaba = 0;
+    let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
     for (var i = 0; i < this.children.length; i++)
-      totalHaba += this.children[i].size[movableAxis];
-    if (this.size[movableAxis] !== totalHaba) {
-      let resizeRatio = this.size[movableAxis] / totalHaba;
-      totalHaba = 0;
+      totalWidth += this.children[i].size[variableAxis];
+    if (this.size[variableAxis] !== totalWidth) {
+      let resizeRatio = this.size[variableAxis] / totalWidth;
+      totalWidth = 0;
       for (var i = 0; i < this.children.length - 1; i++) {
-        this.children[i].size[movableAxis] = parseInt(this.children[i].size[movableAxis] * resizeRatio);
-        totalHaba += this.children[i].size[movableAxis];
+        this.children[i].size[variableAxis] = parseInt(this.children[i].size[variableAxis] * resizeRatio);
+        totalWidth += this.children[i].size[variableAxis];
       }
-      this.children[this.children.length - 1].size[movableAxis] = this.size[movableAxis] - totalHaba;
+      this.children[this.children.length - 1].size[variableAxis] = this.size[variableAxis] - totalWidth;
     }
     for (var i = 0; i < this.children.length; i++) {
       this.children[i].size[fixedAxis] = this.size[fixedAxis];
