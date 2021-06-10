@@ -1,5 +1,5 @@
-const rowCount = 20;
-const colCount = 20;
+const rowCount = 40;
+const colCount = 40;
 
 const SplitDirection = Object.freeze({
   'horizontal': 'horizontal',
