@@ -79,33 +79,6 @@ class Container {
     console.error('cannot find position');
   }
 
-  split(splitDirection) {
-    const variableAxis = splitDirection === SplitDirection.vertical? 0: 1;
-    let newMySize = this.size.slice();
-    newMySize[variableAxis] = parseInt(newMySize[variableAxis] / 2);
-    let newOtherSize = this.size.slice();
-    newOtherSize[variableAxis] = this.size[variableAxis] - newMySize[variableAxis];
-
-    if (this.parent !== null && this.parent.splitDirection == splitDirection) {
-      let newChild = new Pane(this.parent, newOtherSize);
-      let position = this.parent.indexOf(this);
-      this.parent.insertChild(newChild, position + 1);
-      this.size = newMySize;
-      this.parent.reload();
-    } else {
-      let newParent = new Container(this.parent, this.size, splitDirection);
-      let newChild = new Pane(newParent, newOtherSize);
-      this.size = newMySize;
-      if (this.parent !== null)
-        this.parent.replaceChild(this, newParent);
-      this.changeParent(newParent);
-
-      newParent.appendChild(this);
-      newParent.appendChild(newChild);
-      newParent.reload();
-    }
-  }
-
   resizeChild(child, size, direction) {
     const variableAxis = direction === SplitDirection.horizontal? 0: 1;
     // ここの条件わかりにくいので直す（そもそもresizeでsplitDirectionってのがよくわからん）
@@ -187,6 +160,33 @@ class Pane extends Container {
   remove() {
     document.getElementById('container').removeChild(this.div);
     this.parent.removeChild(this);
+  }
+
+  split(splitDirection) {
+    const variableAxis = splitDirection === SplitDirection.vertical? 0: 1;
+    let newMySize = this.size.slice();
+    newMySize[variableAxis] = parseInt(newMySize[variableAxis] / 2);
+    let newOtherSize = this.size.slice();
+    newOtherSize[variableAxis] = this.size[variableAxis] - newMySize[variableAxis];
+
+    if (this.parent !== null && this.parent.splitDirection == splitDirection) {
+      let newChild = new Pane(this.parent, newOtherSize);
+      let position = this.parent.indexOf(this);
+      this.parent.insertChild(newChild, position + 1);
+      this.size = newMySize;
+      this.parent.reload();
+    } else {
+      let newParent = new Container(this.parent, this.size, splitDirection);
+      let newChild = new Pane(newParent, newOtherSize);
+      this.size = newMySize;
+      if (this.parent !== null)
+        this.parent.replaceChild(this, newParent);
+      this.changeParent(newParent);
+
+      newParent.appendChild(this);
+      newParent.appendChild(newChild);
+      newParent.reload();
+    }
   }
 
   reload() {
