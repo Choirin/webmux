@@ -209,7 +209,7 @@ class Container {
           this.children[i].height = parseInt(this.children[i].height * resizeRatio);
           totalHeight += this.children[i].height;
         }
-        this.children[this.children.length - 1] = this.height - totalHeight;
+        this.children[this.children.length - 1].height = this.height - totalHeight;
       }
       for (var i = 0; i < this.children.length; i++) {
         this.children[i].width = this.width;
@@ -226,7 +226,7 @@ class Container {
           this.children[i].width = parseInt(this.children[i].width * resizeRatio);
           totalWidth += this.children[i].width;
         }
-        this.children[this.children.length - 1] = this.width - totalWidth;
+        this.children[this.children.length - 1].width = this.width - totalWidth;
       }
       for (var i = 0; i < this.children.length; i++) {
         this.children[i].height = this.height;
