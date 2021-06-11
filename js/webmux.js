@@ -1,5 +1,6 @@
 const rowCount = 40;
 const colCount = 40;
+const minimumSize = [3, 2];
 
 const SplitDirection = Object.freeze({
   'horizontal': 'horizontal',
@@ -61,6 +62,20 @@ class Container {
     this.children.splice(index, 1, newChild);
   }
 
+  getMinimumSize() {
+    const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
+    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    // check sum of the children's size in the splitted axis
+    let minimumSize = [0, 0];
+    for (var i = 0; i < this.children.length; i++) {
+      let childMinimumSize = this.children[i].getMinimumSize();
+      minimumSize[variableAxis] += childMinimumSize[variableAxis];
+      if (childMinimumSize[fixedAxis] > minimumSize[fixedAxis])
+        minimumSize[fixedAxis] = childMinimumSize[fixedAxis];
+    }
+    return minimumSize;
+  }
+
   getPosition() {
     let position = [1, 1];
     if (this.parent != null) {
@@ -70,13 +85,47 @@ class Container {
   }
 
   getChildPosition(child) {
+    const variableAxid = this.splitDirection === SplitDirection.vertical? 0: 1;
     let position = this.getPosition();
     for (var i = 0; i < this.children.length; i++) {
       if (this.children[i] === child || this.splitDirection === null) return position;
-      const variableAxid = this.splitDirection === SplitDirection.vertical? 0: 1;
       position[variableAxid] += this.children[i].size[variableAxid];
     }
     console.error('cannot find position');
+  }
+
+  resize(size) {
+    if (this.size[0] === size[0] && this.size[1] === size[1]) return this.size;
+    console.info(size);
+
+    const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
+    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    // check sum of the children's size in the splitted axis
+    let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
+    for (var i = 0; i < this.children.length; i++)
+      totalWidth += this.children[i].size[variableAxis];
+    let resizeRatio = size[variableAxis] / totalWidth;  // could be 1.0
+
+    // propagate to the children
+    let childSize = [0, 0];
+    childSize[fixedAxis] = size[fixedAxis];
+    totalWidth = 0;
+    for (var i = 0; i < this.children.length - 1; i++) {
+      childSize[variableAxis] = parseInt(this.children[i].size[variableAxis] * resizeRatio);
+      const childFinalSize = this.children[i].resize(childSize);
+      totalWidth += childFinalSize[variableAxis];
+    }
+    console.info('totalWidth' + totalWidth);
+    childSize[variableAxis] = size[variableAxis] - totalWidth;
+    console.info('childSize' + childSize);
+    const childFinalSize = this.children[this.children.length - 1].resize(childSize);
+    totalWidth += childFinalSize[variableAxis];
+    console.info('childfinal' + childFinalSize);
+
+    // assume the fixed axis size is the same in the all children (should be)
+    this.size[variableAxis] = totalWidth;
+    this.size[fixedAxis] = childFinalSize[fixedAxis];
+    return this.size;
   }
 
   resizeChild(child, size, direction) {
@@ -90,49 +139,59 @@ class Container {
       console.error('invalid child size: ' + this.children.length);
     }
 
-    const index = this.children.indexOf(child);
-    if (index === this.children.length - 1) {
-      // most bottom/right pane has different direction
-      if (this.children[index - 1].size[variableAxis] + size > 0 &&
-          this.children[index].size[variableAxis] - size > 0) {
-        this.children[index - 1].size[variableAxis] += size;
-        this.children[index].size[variableAxis] -= size;
-      }
-    } else {
-      if (this.children[index].size[variableAxis] + size > 0 &&
-          this.children[index + 1].size[variableAxis] - size > 0) {
-        this.children[index].size[variableAxis] += size;
-        this.children[index + 1].size[variableAxis] -= size;
-      }
+    let childSize = [0, 0];
+    let index = this.children.indexOf(child);
+    if (index === this.children.length - 1) index -= 1;
+
+    let mimimumSizeA = this.children[index].getMinimumSize();
+    let mimimumSizeB = this.children[index + 1].getMinimumSize();
+    console.info(mimimumSizeA);
+    console.info(mimimumSizeB);
+
+    if (mimimumSizeA[variableAxis] > this.children[index].size[variableAxis] + size ||
+      mimimumSizeB[variableAxis] > this.children[index + 1].size[variableAxis] - size) {
+      console.warn('cannot resize');
+      return;
     }
 
-    rootContainer.reload();
+    // resize child next to the target
+    childSize = this.children[index].size.slice();
+    childSize[variableAxis] = this.children[index].size[variableAxis] + size;
+    console.info('a: ' + childSize);
+    this.children[index].resize(childSize);
+    // resize the target
+    childSize = this.children[index + 1].size.slice();
+    childSize[variableAxis] = this.children[index + 1].size[variableAxis] - size;
+    console.info('b: ' + childSize);
+    this.children[index + 1].resize(childSize);
+
+    // rootContainer.reload();
   }
 
   reload() {
-    if (this.splitDirection === null) {
+    // if (this.splitDirection === null) {
       for (var i = 0; i < this.children.length; i++) this.children[i].reload();
-    }
+    // }
 
-    const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
-    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
-    // propagate its size to the children
-    let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
-    for (var i = 0; i < this.children.length; i++)
-      totalWidth += this.children[i].size[variableAxis];
-    if (this.size[variableAxis] !== totalWidth) {
-      let resizeRatio = this.size[variableAxis] / totalWidth;
-      totalWidth = 0;
-      for (var i = 0; i < this.children.length - 1; i++) {
-        this.children[i].size[variableAxis] = parseInt(this.children[i].size[variableAxis] * resizeRatio);
-        totalWidth += this.children[i].size[variableAxis];
-      }
-      this.children[this.children.length - 1].size[variableAxis] = this.size[variableAxis] - totalWidth;
-    }
-    for (var i = 0; i < this.children.length; i++) {
-      this.children[i].size[fixedAxis] = this.size[fixedAxis];
-      this.children[i].reload();
-    }
+    // const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
+    // const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    // // propagate its size to the children
+    // let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
+    // for (var i = 0; i < this.children.length; i++)
+    //   totalWidth += this.children[i].size[variableAxis];
+    // if (this.size[variableAxis] !== totalWidth) {
+    //   let resizeRatio = this.size[variableAxis] / totalWidth;
+    //   totalWidth = 0;
+    //   for (var i = 0; i < this.children.length - 1; i++) {
+    //     this.children[i].size[variableAxis] = parseInt(this.children[i].size[variableAxis] * resizeRatio);
+    //     totalWidth += this.children[i].size[variableAxis];
+    //   }
+    //   this.children[this.children.length - 1].size[variableAxis] = this.size[variableAxis] - totalWidth;
+    // }
+    // for (var i = 0; i < this.children.length; i++) {
+    //   this.children[i].size[fixedAxis] = this.size[fixedAxis];
+    //   this.children[i].reload();
+    // }
   }
 }
 
@@ -148,7 +207,7 @@ class Pane extends Container {
     this.iframe.style.width = '100%';
     this.iframe.style.height = '100%';
     this.iframe.style.cssFloat = 'relative';
-    this.iframe.frameBorder = '0';
+    this.iframe.frameBorder = '0';  // not recommended (deprecated)
     this.div.appendChild(this.iframe);
 
     this.command_triggered = false;
@@ -187,6 +246,22 @@ class Pane extends Container {
       newParent.appendChild(newChild);
       newParent.reload();
     }
+  }
+
+  getMinimumSize() {
+    return minimumSize;
+  }
+
+  resize(size) {
+    this.size = size.slice();
+    if (this.size[0] < minimumSize[0]) this.size[0] = minimumSize[0];
+    if (this.size[1] < minimumSize[1]) this.size[1] = minimumSize[1];
+
+    const position = this.getPosition();
+    console.info("pos: "+ position);
+    this.div.style.gridColumn = position[0] + '/' + (position[0] + this.size[0]);
+    this.div.style.gridRow = position[1] + '/' + (position[1] + this.size[1]);
+    return this.size;
   }
 
   reload() {
