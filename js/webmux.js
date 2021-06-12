@@ -2,16 +2,20 @@ const rowCount = 40;
 const colCount = 40;
 const minimumSize = [3, 2];
 
-const SplitDirection = Object.freeze({
-  'horizontal': 'horizontal',
-  'vertical': 'vertical'
+const Axis = Object.freeze({
+  'horizontal': 0,
+  'vertical': 1
 });
 
+reverseAxis = function(axis) {
+  return axis === Axis.horizontal? Axis.vertical: Axis.horizontal;
+}
+
 class Container {
-  constructor(parent, size, splitDirection) {
+  constructor(parent, size, splitAxis) {
     this.parent = parent;
     this.size = size;
-    this.splitDirection = splitDirection;
+    this.splitAxis = splitAxis;
     this.children = [];
   }
 
@@ -33,9 +37,9 @@ class Container {
 
   removeChild(child) {
     let index = this.children.indexOf(child);
-    if (this.children.length > 1 && this.splitDirection !== null) {
+    if (this.children.length > 1 && this.splitAxis !== null) {
       // give the removed size to the neighbor child
-      const variableAxis = this.splitDirection === SplitDirection.vertical? 0: 1;
+      const variableAxis = reverseAxis(this.splitAxis);
       const neighborIndex = index === this.children.length - 1? index - 1: index + 1;
       let newSize = this.children[neighborIndex].size.slice();
       newSize[variableAxis] += child.size[variableAxis];
@@ -63,8 +67,8 @@ class Container {
   }
 
   getMinimumSize() {
-    const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
-    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    const fixedAxis = this.splitAxis;
+    const variableAxis = reverseAxis(this.splitAxis);
     // check sum of the children's size in the splitted axis
     let minimumSize = [0, 0];
     for (var i = 0; i < this.children.length; i++) {
@@ -85,10 +89,10 @@ class Container {
   }
 
   getChildPosition(child) {
-    const variableAxid = this.splitDirection === SplitDirection.vertical? 0: 1;
+    const variableAxid = reverseAxis(this.splitAxis);
     let position = this.getPosition();
     for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i] === child || this.splitDirection === null) return position;
+      if (this.children[i] === child || this.splitAxis === null) return position;
       position[variableAxid] += this.children[i].size[variableAxid];
     }
     console.error('cannot find position');
@@ -98,8 +102,8 @@ class Container {
     // TODO: can be refactored without returning the final size (just check resizability before resize)
     if (this.size[0] === size[0] && this.size[1] === size[1]) return this.size;
 
-    const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
-    const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
+    const fixedAxis = this.splitAxis;
+    const variableAxis = reverseAxis(this.splitAxis);
     // check sum of the children's size in the splitted axis
     let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
     for (var i = 0; i < this.children.length; i++)
@@ -134,10 +138,9 @@ class Container {
       mimimumSizeB[axis] <= childRightOrLower.size[axis] - step);
   }
 
-  resizeChild(child, direction, step) {
-    const variableAxis = direction === SplitDirection.horizontal? 0: 1;
-    if (this.splitDirection === null || this.splitDirection === direction) {
-      if (this.parent !== null) this.parent.resizeChild(this, direction, step);
+  resizeChild(child, axis, step) {
+    if (this.splitAxis === null || this.splitAxis === axis) {
+      if (this.parent !== null) this.parent.resizeChild(this, axis, step);
       return;
     }
     if (this.children.length < 2) {
@@ -147,7 +150,7 @@ class Container {
 
     let index = this.children.indexOf(child);
     if (index === this.children.length - 1) index -= 1;
-    if (!this.canResize(this.children[index], this.children[index + 1], variableAxis, step)) {
+    if (!this.canResize(this.children[index], this.children[index + 1], axis, step)) {
       console.warn('failed to resize due to size limit');
       return;
     }
@@ -155,11 +158,11 @@ class Container {
     let childSize = [0, 0];
     // resize the left or upper child
     childSize = this.children[index].size.slice();
-    childSize[variableAxis] = this.children[index].size[variableAxis] + step;
+    childSize[axis] = this.children[index].size[axis] + step;
     this.children[index].resize(childSize);
     // resize the right or lower child
     childSize = this.children[index + 1].size.slice();
-    childSize[variableAxis] = this.children[index + 1].size[variableAxis] - step;
+    childSize[axis] = this.children[index + 1].size[axis] - step;
     this.children[index + 1].resize(childSize);
   }
 
@@ -194,21 +197,21 @@ class Pane extends Container {
     this.parent.removeChild(this);
   }
 
-  split(splitDirection) {
-    const variableAxis = splitDirection === SplitDirection.vertical? 0: 1;
+  split(splitAxis) {
+    const variableAxis = reverseAxis(splitAxis);
     let newMySize = this.size.slice();
     newMySize[variableAxis] = parseInt(newMySize[variableAxis] / 2);
     let newOtherSize = this.size.slice();
     newOtherSize[variableAxis] = this.size[variableAxis] - newMySize[variableAxis];
 
-    if (this.parent !== null && this.parent.splitDirection == splitDirection) {
+    if (this.parent !== null && this.parent.splitAxis == splitAxis) {
       let newChild = new Pane(this.parent, newOtherSize);
       let position = this.parent.indexOf(this);
       this.parent.insertChild(newChild, position + 1);
       this.size = newMySize;
       this.parent.reload();
     } else {
-      let newParent = new Container(this.parent, this.size, splitDirection);
+      let newParent = new Container(this.parent, this.size, splitAxis);
       let newChild = new Pane(newParent, newOtherSize);
       this.size = newMySize;
       if (this.parent !== null)
@@ -259,11 +262,11 @@ class Pane extends Container {
     if (this.command_triggered) {
       if (event.key === '"') {
         console.info('split horizontally');
-        this.split(SplitDirection.horizontal);
+        this.split(Axis.horizontal);
         this.command_triggered = false;
       } else if (event.key === '%') {
         console.info('split vertically');
-        this.split(SplitDirection.vertical);
+        this.split(Axis.vertical);
         this.command_triggered = false;
       } else if (event.key === 'x') {
         console.info('remove');
@@ -272,19 +275,19 @@ class Pane extends Container {
         this.command_triggered = false;
       } else if (event.key === 'ArrowLeft') {
         console.info('left');
-        this.parent.resizeChild(this, SplitDirection.horizontal, -1);
+        this.parent.resizeChild(this, Axis.horizontal, -1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowRight') {
         console.info('right');
-        this.parent.resizeChild(this, SplitDirection.horizontal, 1);
+        this.parent.resizeChild(this, Axis.horizontal, 1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowUp') {
         console.info('up');
-        this.parent.resizeChild(this, SplitDirection.vertical, -1);
+        this.parent.resizeChild(this, Axis.vertical, -1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowDown') {
         console.info('down');
-        this.parent.resizeChild(this, SplitDirection.vertical, 1);
+        this.parent.resizeChild(this, Axis.vertical, 1);
         this.command_triggered = false;
       }
     }
