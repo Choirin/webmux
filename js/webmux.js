@@ -34,12 +34,12 @@ class Container {
   removeChild(child) {
     let index = this.children.indexOf(child);
     if (this.children.length > 1 && this.splitDirection !== null) {
+      // give the removed size to the neighbor child
       const variableAxis = this.splitDirection === SplitDirection.vertical? 0: 1;
-      if (index == this.children.length - 1) {
-        this.children[index - 1].size[variableAxis] += child.size[variableAxis];
-      } else {
-        this.children[index + 1].size[variableAxis] += child.size[variableAxis];
-      }
+      const neighborIndex = index === this.children.length - 1? index - 1: index + 1;
+      let newSize = this.children[neighborIndex].size.slice();
+      newSize[variableAxis] += child.size[variableAxis];
+      this.children[neighborIndex].resize(newSize);
     }
 
     this.children.splice(index, 1);
