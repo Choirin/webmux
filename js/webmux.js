@@ -130,7 +130,7 @@ class Container {
     // step direction: to the right or upper is positive
     let mimimumSizeA = childLeftOrUpper.getMinimumSize();
     let mimimumSizeB = childRightOrLower.getMinimumSize();
-    return (mimimumSizeA[axis] <= childLeftOrUpper.size[axis] + step ||
+    return (mimimumSizeA[axis] <= childLeftOrUpper.size[axis] + step &&
       mimimumSizeB[axis] <= childRightOrLower.size[axis] - step);
   }
 
