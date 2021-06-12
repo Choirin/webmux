@@ -95,8 +95,8 @@ class Container {
   }
 
   resize(size) {
+    // TODO: can be refactored without returning the final size (just check resizability before resize)
     if (this.size[0] === size[0] && this.size[1] === size[1]) return this.size;
-    console.info(size);
 
     const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
     const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
@@ -115,12 +115,9 @@ class Container {
       const childFinalSize = this.children[i].resize(childSize);
       totalWidth += childFinalSize[variableAxis];
     }
-    console.info('totalWidth' + totalWidth);
     childSize[variableAxis] = size[variableAxis] - totalWidth;
-    console.info('childSize' + childSize);
     const childFinalSize = this.children[this.children.length - 1].resize(childSize);
     totalWidth += childFinalSize[variableAxis];
-    console.info('childfinal' + childFinalSize);
 
     // assume the fixed axis size is the same in the all children (should be)
     this.size[variableAxis] = totalWidth;
@@ -128,70 +125,46 @@ class Container {
     return this.size;
   }
 
-  resizeChild(child, size, direction) {
+  canResize(childLeftOrUpper, childRightOrLower, axis, step) {
+    // childLeftOrUpper should be the left or upper child
+    // step direction: to the right or upper is positive
+    let mimimumSizeA = childLeftOrUpper.getMinimumSize();
+    let mimimumSizeB = childRightOrLower.getMinimumSize();
+    return (mimimumSizeA[axis] <= childLeftOrUpper.size[axis] + step ||
+      mimimumSizeB[axis] <= childRightOrLower.size[axis] - step);
+  }
+
+  resizeChild(child, direction, step) {
     const variableAxis = direction === SplitDirection.horizontal? 0: 1;
-    // ここの条件わかりにくいので直す（そもそもresizeでsplitDirectionってのがよくわからん）
     if (this.splitDirection === null || this.splitDirection === direction) {
-      if (this.parent !== null) this.parent.resizeChild(this, size, direction);
+      if (this.parent !== null) this.parent.resizeChild(this, direction, step);
       return;
     }
     if (this.children.length < 2) {
       console.error('invalid child size: ' + this.children.length);
-    }
-
-    let childSize = [0, 0];
-    let index = this.children.indexOf(child);
-    if (index === this.children.length - 1) index -= 1;
-
-    let mimimumSizeA = this.children[index].getMinimumSize();
-    let mimimumSizeB = this.children[index + 1].getMinimumSize();
-    console.info(mimimumSizeA);
-    console.info(mimimumSizeB);
-
-    if (mimimumSizeA[variableAxis] > this.children[index].size[variableAxis] + size ||
-      mimimumSizeB[variableAxis] > this.children[index + 1].size[variableAxis] - size) {
-      console.warn('cannot resize');
       return;
     }
 
-    // resize child next to the target
-    childSize = this.children[index].size.slice();
-    childSize[variableAxis] = this.children[index].size[variableAxis] + size;
-    console.info('a: ' + childSize);
-    this.children[index].resize(childSize);
-    // resize the target
-    childSize = this.children[index + 1].size.slice();
-    childSize[variableAxis] = this.children[index + 1].size[variableAxis] - size;
-    console.info('b: ' + childSize);
-    this.children[index + 1].resize(childSize);
+    let index = this.children.indexOf(child);
+    if (index === this.children.length - 1) index -= 1;
+    if (!this.canResize(this.children[index], this.children[index + 1], variableAxis, step)) {
+      console.warn('failed to resize due to size limit');
+      return;
+    }
 
-    // rootContainer.reload();
+    let childSize = [0, 0];
+    // resize the left or upper child
+    childSize = this.children[index].size.slice();
+    childSize[variableAxis] = this.children[index].size[variableAxis] + step;
+    this.children[index].resize(childSize);
+    // resize the right or lower child
+    childSize = this.children[index + 1].size.slice();
+    childSize[variableAxis] = this.children[index + 1].size[variableAxis] - step;
+    this.children[index + 1].resize(childSize);
   }
 
   reload() {
-    // if (this.splitDirection === null) {
-      for (var i = 0; i < this.children.length; i++) this.children[i].reload();
-    // }
-
-    // const fixedAxis = this.splitDirection === SplitDirection.horizontal? 0: 1;
-    // const variableAxis = this.splitDirection === SplitDirection.horizontal? 1: 0;
-    // // propagate its size to the children
-    // let totalWidth = 0;  // means width (horizontal width) or height (vertical width)
-    // for (var i = 0; i < this.children.length; i++)
-    //   totalWidth += this.children[i].size[variableAxis];
-    // if (this.size[variableAxis] !== totalWidth) {
-    //   let resizeRatio = this.size[variableAxis] / totalWidth;
-    //   totalWidth = 0;
-    //   for (var i = 0; i < this.children.length - 1; i++) {
-    //     this.children[i].size[variableAxis] = parseInt(this.children[i].size[variableAxis] * resizeRatio);
-    //     totalWidth += this.children[i].size[variableAxis];
-    //   }
-    //   this.children[this.children.length - 1].size[variableAxis] = this.size[variableAxis] - totalWidth;
-    // }
-    // for (var i = 0; i < this.children.length; i++) {
-    //   this.children[i].size[fixedAxis] = this.size[fixedAxis];
-    //   this.children[i].reload();
-    // }
+    for (var i = 0; i < this.children.length; i++) this.children[i].reload();
   }
 }
 
@@ -258,7 +231,6 @@ class Pane extends Container {
     if (this.size[1] < minimumSize[1]) this.size[1] = minimumSize[1];
 
     const position = this.getPosition();
-    console.info("pos: "+ position);
     this.div.style.gridColumn = position[0] + '/' + (position[0] + this.size[0]);
     this.div.style.gridRow = position[1] + '/' + (position[1] + this.size[1]);
     return this.size;
@@ -278,6 +250,11 @@ class Pane extends Container {
     if (event.key === 'b' && event.ctrlKey) {
       this.command_triggered = true;
       return;
+    } else if (event.key === 'd' && event.ctrlKey) {
+      console.info('remove');
+      this.remove();
+      rootContainer.reload();
+      return;
     }
     if (this.command_triggered) {
       if (event.key === '"') {
@@ -288,26 +265,26 @@ class Pane extends Container {
         console.info('split vertically');
         this.split(SplitDirection.vertical);
         this.command_triggered = false;
-      } else if (event.key === 'd') {
+      } else if (event.key === 'x') {
         console.info('remove');
         this.remove();
         rootContainer.reload();
         this.command_triggered = false;
       } else if (event.key === 'ArrowLeft') {
         console.info('left');
-        this.parent.resizeChild(this, -1, SplitDirection.horizontal);
+        this.parent.resizeChild(this, SplitDirection.horizontal, -1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowRight') {
         console.info('right');
-        this.parent.resizeChild(this, 1, SplitDirection.horizontal);
+        this.parent.resizeChild(this, SplitDirection.horizontal, 1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowUp') {
         console.info('up');
-        this.parent.resizeChild(this, -1, SplitDirection.vertical);
+        this.parent.resizeChild(this, SplitDirection.vertical, -1);
         this.command_triggered = false;
       } else if (event.key === 'ArrowDown') {
         console.info('down');
-        this.parent.resizeChild(this, 1, SplitDirection.vertical);
+        this.parent.resizeChild(this, SplitDirection.vertical, 1);
         this.command_triggered = false;
       }
     }
